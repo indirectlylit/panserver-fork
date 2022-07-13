@@ -9,16 +9,18 @@ import subprocess
 import json
 import hashlib
 
-class FileProvider:
 
+class FileProvider:
     def __init__(self, indir):
-        self.file_endings = ['.md', '.rst']
+        self.file_endings = [".md", ".rst"]
         self.indir = indir
 
     def get_in_filename(self, name):
         f = os.path.join(self.indir, self.get_in_filename_rel(name))
         if not os.path.abspath(f).startswith(os.path.abspath(self.indir)):
-            raise Exception('Path in problem', os.path.abspath(f), os.path.abspath(self.indir))
+            raise Exception(
+                "Path in problem", os.path.abspath(f), os.path.abspath(self.indir)
+            )
         for file_ending in [""] + self.file_endings:
             if os.path.exists(f + file_ending):
                 return f + file_ending
@@ -41,9 +43,18 @@ class FileProvider:
         else:
             return os.path.getmtime(f)
 
-class DocumentCompiler:
 
-    def __init__(self, *, embedding_processor = None, autorefresh = False, export = False, basic_style = False, inline = False, toc = True):
+class DocumentCompiler:
+    def __init__(
+        self,
+        *,
+        embedding_processor=None,
+        autorefresh=False,
+        export=False,
+        basic_style=False,
+        inline=False,
+        toc=True
+    ):
         self.embedding_processor = embedding_processor
         self.autorefresh = autorefresh
         self.export = export
@@ -71,7 +82,9 @@ class DocumentCompiler:
         text += meta_no_mobilescale
         if not self.basic_style:
             if not self.export:
-                text += """<style type="text/css">{}</style>""".format(style_basic + style_document_add)
+                text += """<style type="text/css">{}</style>""".format(
+                    style_basic + style_document_add
+                )
             else:
                 text = """<style type="text/css">{}</style>""".format(style_basic)
             text += markdown_css_link
@@ -103,7 +116,7 @@ class DocumentCompiler:
         </script>
         """
 
-        with open(self.headerfile, 'w') as f:
+        with open(self.headerfile, "w") as f:
             f.write(text)
 
     def create_beforefile(self):
@@ -123,64 +136,78 @@ class DocumentCompiler:
             text += """
             <span class="markdown-body">
             """
-        with open(self.beforefile, 'w') as f:
-                f.write(text)
+        with open(self.beforefile, "w") as f:
+            f.write(text)
 
     def create_afterfile(self):
         text = ""
         if not self.basic_style:
             text += "</span>"
-        with open(self.afterfile, 'w') as f:
+        with open(self.afterfile, "w") as f:
             f.write(text)
 
     def get_out_filename(self, name):
-        f =  os.path.join(self.outdir, self.get_out_filename_rel(name))
+        f = os.path.join(self.outdir, self.get_out_filename_rel(name))
         if not os.path.abspath(f).startswith(os.path.abspath(self.outdir)):
-            raise Exception('Path out problem', os.path.abspath(f), os.path.abspath(self.outdir))
+            raise Exception(
+                "Path out problem", os.path.abspath(f), os.path.abspath(self.outdir)
+            )
         return f
 
     def get_out_filename_rel(self, name):
         return name + ".html"
 
-    def compile_document(self, name, file_provider : FileProvider):
+    def compile_document(self, name, file_provider: FileProvider):
         out_filename = self.get_out_filename(name)
 
         # Skip if compiled file exists
-        if os.path.exists(out_filename) and os.path.getmtime(out_filename) >= file_provider.get_mtime(name):
+        if os.path.exists(out_filename) and os.path.getmtime(
+            out_filename
+        ) >= file_provider.get_mtime(name):
             return
 
-        #create directory if needed
+        # create directory if needed
         out_filename_dir = os.path.dirname(out_filename)
         if not os.path.exists(out_filename_dir):
             os.makedirs(out_filename_dir)
 
-        #combine action based on format
-        action = ['pandoc']
+        # combine action based on format
+        action = ["pandoc"]
 
         if not self.inline:
-            action += ['-s']
-            action += ['-H', self.headerfile]
-            action += ['-B', self.beforefile, '-A', self.afterfile]
+            action += ["-s"]
+            action += ["-H", self.headerfile]
+            action += ["-B", self.beforefile, "-A", self.afterfile]
 
             if self.toc:
-                action += ['--toc']
+                action += ["--toc"]
 
         # compile
-        #print(action)
+        # print(action)
         # create json in intermediate step
-        json_encoding_process = subprocess.Popen(action + ['-t', 'json', file_provider.get_in_filename(name)], stdout=subprocess.PIPE)
+        json_encoding_process = subprocess.Popen(
+            action + ["-t", "json", file_provider.get_in_filename(name)],
+            stdout=subprocess.PIPE,
+        )
         json_text, _ = json_encoding_process.communicate()
-        json_text = json_text.decode('utf-8')
+        json_text = json_text.decode("utf-8")
 
         # process json to extract embedded dot diagrams and others
-        json_text, math_option = self.process_document_json(json_text, alternative_title=os.path.basename(name))
+        json_text, math_option = self.process_document_json(
+            json_text, alternative_title=os.path.basename(name)
+        )
 
         # render to HTML
-        json_decoding_process = subprocess.Popen(action + math_option + ['-f', 'json', '-o', out_filename], stdin=subprocess.PIPE)
-        json_decoding_process.communicate(json_text.encode('utf-8'))
+        json_decoding_process = subprocess.Popen(
+            action + math_option + ["-f", "json", "-o", out_filename],
+            stdin=subprocess.PIPE,
+        )
+        json_decoding_process.communicate(json_text.encode("utf-8"))
 
     def process_document_json(self, json_text, alternative_title):
-        math_option = ['--mathjax=https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML']
+        math_option = [
+            "--mathjax=https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+        ]
         changed = False
 
         doc = json.loads(json_text)
@@ -201,7 +228,10 @@ class DocumentCompiler:
 
         # Add title if missing
         if "title" not in doc["meta"] and "pagetitle" not in doc["meta"]:
-            doc["meta"]["pagetitle"] = {'t': 'MetaInlines', 'c': [{'t': 'Str', 'c': alternative_title}]}
+            doc["meta"]["pagetitle"] = {
+                "t": "MetaInlines",
+                "c": [{"t": "Str", "c": alternative_title}],
+            }
             changed = True
 
         # Allow user to select math option using metadata
@@ -209,9 +239,11 @@ class DocumentCompiler:
             meta_math = doc["meta"]["panserver_math"]["c"][0]["c"]
             print("math option ", meta_math)
             if meta_math == "mathml":
-                math_option = ['--mathml']
+                math_option = ["--mathml"]
             elif meta_math == "mathjax":
-                math_option = ['--mathjax=https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML']
+                math_option = [
+                    "--mathjax=https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+                ]
             elif meta_math == "none":
                 math_option = []
 
@@ -221,7 +253,6 @@ class DocumentCompiler:
 
 
 class EmbeddingProcessor:
-
     def __init__(self, programs):
         self.tempdir = tempfile.mkdtemp()
         self.programs = programs
@@ -236,16 +267,21 @@ class EmbeddingProcessor:
             return
 
         code = block["c"][1]
-        md5 = hashlib.md5(code.encode('utf-8')).hexdigest()
+        md5 = hashlib.md5(code.encode("utf-8")).hexdigest()
         error = None
         target = os.path.join(self.tempdir, "{}.{}.png".format(md5, fmt))
 
         if not os.path.exists(target):
-            process = subprocess.Popen(self.programs[fmt], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            process_out, process_err = process.communicate(code.encode('utf-8'))
+            process = subprocess.Popen(
+                self.programs[fmt],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            process_out, process_err = process.communicate(code.encode("utf-8"))
             error_code = process.wait()
             if error_code != 0:
-                error = process_err.decode('utf-8')
+                error = process_err.decode("utf-8")
             else:
                 with open(target, "wb") as f:
                     f.write(process_out)
@@ -253,32 +289,43 @@ class EmbeddingProcessor:
         if error is None:
             # Replace embedding in block with image
             block["t"] = "Para"
-            block["c"] = [ { "t" : "Image", "c" : [
-                ["", [], []],
-                [],
-                [ "/generated/{}.{}.png".format(md5, fmt), "fig:"]
-                ]}]
+            block["c"] = [
+                {
+                    "t": "Image",
+                    "c": [
+                        ["", [], []],
+                        [],
+                        ["/generated/{}.{}.png".format(md5, fmt), "fig:"],
+                    ],
+                }
+            ]
         else:
             # Insert error
             block["c"][0][1] = []
             block["c"][1] = error
 
+
 ### Routes
 
-@route('/view/<name:path>')
+
+@route("/view/<name:path>")
 def route_view(name):
     if file_provider.is_not_static(name):
         print("not static")
         fmt = bottle.request.query.fmt or "std"
-        if not fmt in document_compilers: return 'Unknown format'
+        if not fmt in document_compilers:
+            return "Unknown format"
         compiler = document_compilers[fmt]
         compiler.compile_document(name, file_provider)
         return bottle.static_file(compiler.get_out_filename_rel(name), compiler.outdir)
 
     else:
-        return bottle.static_file(file_provider.get_in_filename_rel(name), file_provider.indir)
+        return bottle.static_file(
+            file_provider.get_in_filename_rel(name), file_provider.indir
+        )
 
-@route('/refresh/<name:path>')
+
+@route("/refresh/<name:path>")
 def route_refresh(name):
     time = bottle.request.query.time
     try:
@@ -297,53 +344,67 @@ def route_refresh(name):
     else:
         return "False"
 
-@route('/generated/<name:path>')
+
+@route("/generated/<name:path>")
 def route_generated(name):
     return bottle.static_file(name, embedding_processor.tempdir)
 
-@route('/')
+
+@route("/")
 def route_index():
     text = ""
 
     text += "<html><head><title>Panserver Index</title>"
     text += '<style type="text/css">{}</style>'.format(style_basic + style_index)
     text += "</head><body>"
-    text += '<h1>Panserver</h1>'
+    text += "<h1>Panserver</h1>"
     text += 'Serving Markdown documents rendered using <a href="http://pandoc.org/">pandoc</a>. By <a href="http://marcelfischer.eu/">Marcel Fischer</a>'
 
-    def dir_entry(dirname, toplevel = False):
-        #collect markdown files recursively into a list
-        #return '' if no markdown file is in the directory
-        if dirname == '.git':
-            return ''
-        dirtext = ''
-        for name in sorted(os.listdir(os.path.join('.', dirname))):
+    def dir_entry(dirname, toplevel=False):
+        # collect markdown files recursively into a list
+        # return '' if no markdown file is in the directory
+        if dirname == ".git":
+            return ""
+        dirtext = ""
+        for name in sorted(os.listdir(os.path.join(".", dirname))):
             path = os.path.join(dirname, name)
-            if os.path.isdir(path): continue
-            if not file_provider.is_not_static(os.path.basename(path)): continue
+            if os.path.isdir(path):
+                continue
+            if not file_provider.is_not_static(os.path.basename(path)):
+                continue
             d = {}
-            d['name'] = os.path.basename(path)
-            d['path'] = path
-            dirtext += '<li class="file-entry"><a href="/view/{path}">{name}</a></li>'.format(**d)
+            d["name"] = os.path.basename(path)
+            d["path"] = path
+            dirtext += (
+                '<li class="file-entry"><a href="/view/{path}">{name}</a></li>'.format(
+                    **d
+                )
+            )
 
-        for name in sorted(os.listdir(os.path.join('.', dirname))):
+        for name in sorted(os.listdir(os.path.join(".", dirname))):
             path = os.path.join(dirname, name)
-            if not os.path.isdir(path): continue
+            if not os.path.isdir(path):
+                continue
             subdirtext = dir_entry(path)
-            #ignore directories with empty listings
-            if subdirtext != '':
-                dirtext += '<li class="dir-entry">' + os.path.basename(path) + subdirtext + '</li>'
+            # ignore directories with empty listings
+            if subdirtext != "":
+                dirtext += (
+                    '<li class="dir-entry">'
+                    + os.path.basename(path)
+                    + subdirtext
+                    + "</li>"
+                )
 
-        if dirtext != '':
-            dirtext = '<ul class="file-listing">' + dirtext + '</ul>'
+        if dirtext != "":
+            dirtext = '<ul class="file-listing">' + dirtext + "</ul>"
         elif toplevel:
-            dirtext = '<i> (no documents)</i>'
+            dirtext = "<i> (no documents)</i>"
         return dirtext
 
     text += "<h3>Directory contents</h3>"
-    text += dir_entry('', toplevel=True)
+    text += dir_entry("", toplevel=True)
 
-    text += '</body></html>'
+    text += "</body></html>"
 
     return text
 
@@ -355,13 +416,17 @@ def newer_input_exists(name, time):
 
 ### Global vars (used only in the routes and main)
 
-file_provider : FileProvider = None
+file_provider: FileProvider = None
 doument_compilers = {}
-embedding_processor = EmbeddingProcessor({"dot" : ["dot", "-Tpng"], "plantuml" : ["plantuml", "-pipe"]})
+embedding_processor = EmbeddingProcessor(
+    {"dot": ["dot", "-Tpng"], "plantuml": ["plantuml", "-pipe"]}
+)
 
 ### Text constants
 
-meta_no_mobilescale = """<meta name="viewport" content="width=device-width, initial-scale=1.0">"""
+meta_no_mobilescale = (
+    """<meta name="viewport" content="width=device-width, initial-scale=1.0">"""
+)
 
 
 style_basic = """
@@ -401,45 +466,59 @@ style_index = """
         }
 """
 
-markdown_css_link= """<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.css">"""
+markdown_css_link = """<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.css">"""
 
 ### Main
+
 
 def main():
     import webbrowser
     import argparse
 
-    parser = argparse.ArgumentParser(description='Run a local markdown compiling server')
+    parser = argparse.ArgumentParser(
+        description="Run a local markdown compiling server"
+    )
 
-    parser.add_argument('-a', action='store_const', const=True)
-    parser.add_argument('-p', '--port', type=int, default=8080)
-    parser.add_argument('-b', action='store_const', const=True)
-    parser.add_argument('-r', action='store_const', const=True)
-    parser.add_argument('path', nargs='?')
+    parser.add_argument("-a", action="store_const", const=True)
+    parser.add_argument("-p", "--port", type=int, default=8080)
+    parser.add_argument("-b", action="store_const", const=True)
+    parser.add_argument("-r", action="store_const", const=True)
+    parser.add_argument("path", nargs="?")
     config = parser.parse_args()
 
     global document_compilers
     document_compilers = {
-        "std" : DocumentCompiler(autorefresh = config.a, embedding_processor=embedding_processor),
-        "export" : DocumentCompiler(export = True, embedding_processor=embedding_processor),
-        "simple" : DocumentCompiler(export = True, basic_style = True, toc = False, embedding_processor=embedding_processor),
-        "inline" : DocumentCompiler(inline = True, embedding_processor=embedding_processor)
+        "std": DocumentCompiler(
+            autorefresh=config.a, embedding_processor=embedding_processor
+        ),
+        "export": DocumentCompiler(
+            export=True, embedding_processor=embedding_processor
+        ),
+        "simple": DocumentCompiler(
+            export=True,
+            basic_style=True,
+            toc=False,
+            embedding_processor=embedding_processor,
+        ),
+        "inline": DocumentCompiler(
+            inline=True, embedding_processor=embedding_processor
+        ),
     }
 
     if config.path != None:
         if os.path.isdir(config.path):
             os.chdir(config.path)
         else:
-            raise Exception('Unknown path argument')
+            raise Exception("Unknown path argument")
     global file_provider
-    file_provider = FileProvider(os.path.abspath('.'))
+    file_provider = FileProvider(os.path.abspath("."))
 
     if config.b:
-        webbrowser.get().open('http://localhost:{}/'.format(config.port))
+        webbrowser.get().open("http://localhost:{}/".format(config.port))
 
-    host = 'localhost'
+    host = "localhost"
     if config.r:
-        host = ''
+        host = ""
 
     bottle.run(host=host, port=config.port)
 
@@ -447,6 +526,6 @@ def main():
     for compiler in doument_compilers.values():
         shutil.rmtree(compiler.tempdir)
 
-if __name__ == '__main__':
-    main()
 
+if __name__ == "__main__":
+    main()
