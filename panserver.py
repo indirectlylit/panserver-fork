@@ -82,9 +82,7 @@ class DocumentCompiler:
         text += meta_no_mobilescale
         if not self.basic_style:
             if not self.export:
-                text += """<style type="text/css">{}</style>""".format(
-                    style_basic + style_document_add
-                )
+                text += """<style type="text/css">{}</style>""".format(style_basic)
             else:
                 text = """<style type="text/css">{}</style>""".format(style_basic)
             text += markdown_css_link
@@ -122,15 +120,7 @@ class DocumentCompiler:
     def create_beforefile(self):
         text = ""
         if not self.export:
-            text += """
-            <span class="topmenu">Panserver: <a href="/">Index</a>
-            <span style="text-decoration: underline; cursor: pointer" onclick="(tocElement = document.getElementById('TOC')).style.display = (tocElement.style.display != 'block') ? 'block' : 'none';">TOC</span>
-            Format:
-            <a href="?fmt=export">Export</a>
-            <a href="?fmt=simple">Simple</a>
-            <a href="?fmt=inline">Inline</a>
-            </span>
-            """
+            text += '<div class="markdown-body" style="background-color: transparent; margin-bottom: 2em"><a href="/">← Index</a></div>'
 
         if not self.basic_style:
             text += """
@@ -350,9 +340,9 @@ def route_index():
 
     text += "<html><head><title>Panserver Index</title>"
     text += '<style type="text/css">{}</style>'.format(style_basic + style_index)
-    text += "</head><body>"
-    text += "<h1>Panserver</h1>"
-    text += 'Serving Markdown documents rendered using <a href="http://pandoc.org/">pandoc</a>. By <a href="http://marcelfischer.eu/">Marcel Fischer</a>'
+    text += "</head><body class='markdown-body' style='max-width: 600px; margin: auto; margin-top: 80px; padding: 80px;'>"
+    text += "<h1>Markdown files</h1>"
+    text += markdown_css_link
 
     def dir_entry(dirname, toplevel=False):
         # collect markdown files recursively into a list
@@ -424,6 +414,10 @@ meta_no_mobilescale = (
 
 
 style_basic = """
+        html { background-color: #eee; }
+        @media (prefers-color-scheme: dark) {
+            html { background-color: #272727; }
+        }
         body {
             width: 92%; max-width: 40em;  margin: auto;
             font-size: 1.2rem; line-height: 1.5; padding-bottom: 3em;}
@@ -433,22 +427,9 @@ style_basic = """
         div.figure .caption {  padding: 0em 1em 1em; font-size: 0.8em; }
         ul li { list-style-type: disc; }
         li p { margin: 0.5em 0; }
-        #TOC { border: 1px solid lightgray; padding: 0.5em; margin-bottom: 1em;}
-        #TOC li { list-style: circle; }
-        #TOC > ul { margin-bottom: 0px }
-        @media (min-width: 102em) {
-            body { position: relative; }
-            #TOC { display: block; position: absolute; left: -50%; top: 5em; max-width: 46%; width: 45%; }
-        }
+        #TOC ul { margin-top: 0.25em; }
 """
 
-style_document_add = """
-        @media (max-width: 101em) {
-            #TOC { display: none; }
-        }
-        .topmenu { font-size: 1em; color: lightgrey; }
-        .topmenu a { color: lightgrey; }
-"""
 style_index = """
         ul.file-listing a { text-decoration: none; }
         ul.file-listing ul.file-listing { padding-left: 1.5em; }
@@ -458,9 +439,17 @@ style_index = """
         ul li.file-entry{
             list-style-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAA00lEQVQ4jcXUQUqCURSG4Qc0bKaUiKsIhEbazMBhOHILES3EUYIGtpBwlDODhhFCTqQdtIYGf5H+eOVeFP4P3ul7L4fzHbZziQme9jDEqYhU8IkervbwjecYaRPziIeXuIuRNvESKRQjjRV+4f6XN8xQPkQ4wO0Ga9QPEeazKER4gi6uA3T9zy1KeCZb8McAY1RThCkpRtjAh2yJd/EuG0txPzy68BxT4RM2RS1FWEZH+IS1UUoRpuQ1JPw7sDfCDcnTx0rWrJ1pYSTckDwPuNgU/ADJ7ku1B60bXwAAAABJRU5ErkJggg==');
         }
+        @media (prefers-color-scheme: dark) {
+            ul li.dir-entry {
+                list-style-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAmklEQVR42mMYOuD////hQHwViK+g4SNALEeygVDDeLGIxwBxJzkGXsEh7gzEb0DyBPA1IC4BaRAGYh0gvgOiycAsUItdgHgKiDEdiPcC8Qoy8F0gtkY3cAYQ25ARj3C9VDJw1MBRA20pMNAWynaFGVgKxPVAzEi6gQi9QNwBxPkgQU4gng/N3FdIxDeA+AUQ3wbi2UDMzjDoAQBZ7/p98kNklQAAAABJRU5ErkJggg==');
+            }
+            ul li.file-entry{
+                list-style-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAAwElEQVR42tzUAQbCUBzH8UebAsqadI0I1ICNAAl0haSDBIo2toMkUEARIBkF6QZdYX0R/ug9m0kMH/zhy+/hqSzLpD5CJAZLNKC+kUcdN4zgGbyw1UXl0cUBygQp5iJqDO5zBpWMlg0+sfg4YwerTHCKmfCAWzyod/xL0IaPQMOHVSToIESksUFTBCvwhh1ckWpc4FRrchsxEo0YrSJBC0N4GgPUfjX5BNf0wY4R5DTBHbYMSj2sEeW0wnt6yGYAAAiM90EeJ53sAAAAAElFTkSuQmCC');
+            }
+        }
 """
 
-markdown_css_link = """<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.css">"""
+markdown_css_link = """<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.1.0/github-markdown.css">"""
 
 ### Main
 
