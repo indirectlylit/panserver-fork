@@ -160,12 +160,6 @@ class DocumentCompiler:
     def compile_document(self, name, file_provider: FileProvider):
         out_filename = self.get_out_filename(name)
 
-        # Skip if compiled file exists
-        if os.path.exists(out_filename) and os.path.getmtime(
-            out_filename
-        ) >= file_provider.get_mtime(name):
-            return
-
         # create directory if needed
         out_filename_dir = os.path.dirname(out_filename)
         if not os.path.exists(out_filename_dir):
